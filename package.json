@@ -9,7 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@sanity/vision": "^3.17.0",
+    "@sanity/icons": "^3.4.0",
+    "@sanity/ui": "^2.8.9",
+    "@sanity/vision": "^3.57.0",
     "@stripe/stripe-js": "^2.1.7",
     "@types/node": "20.8.2",
     "@types/react": "18.2.24",
