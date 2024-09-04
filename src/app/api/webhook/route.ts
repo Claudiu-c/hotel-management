@@ -1,17 +1,17 @@
-import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { NextResponse } from "next/server";
+import Stripe from "stripe";
 
-import { createBooking, updateHotelRoom } from '@/libs/apis';
+import { createBooking, updateHotelRoom } from "@/libs/apis";
 
-const checkout_session_completed = 'checkout.session.completed';
+const checkout_session_completed = "checkout.session.completed";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2023-08-16',
+  apiVersion: "2023-08-16",
 });
 
 export async function POST(req: Request, res: Response) {
   const reqBody = await req.text();
-  const sig = req.headers.get('stripe-signature');
+  const sig = req.headers.get("stripe-signature");
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   let event: Stripe.Event;
@@ -25,12 +25,15 @@ export async function POST(req: Request, res: Response) {
 
   // load our event
   switch (event.type) {
-    case checkout_session_completed:
-      const session = event.data.object;
+    case checkout_session_completed: {
+      // Ensure that the session object is of the expected type
+      const session = event.data.object as Stripe.Checkout.Session;
 
-      const {
-        // @ts-ignore
-        metadata: {
+      // Use optional chaining to safely access metadata properties
+      const metadata = session.metadata;
+
+      if (metadata) {
+        const {
           adults,
           checkinDate,
           checkoutDate,
@@ -40,35 +43,38 @@ export async function POST(req: Request, res: Response) {
           user,
           discount,
           totalPrice,
-        },
-      } = session;
+        } = metadata;
 
-      await createBooking({
-        adults: Number(adults),
-        checkinDate,
-        checkoutDate,
-        children: Number(children),
-        hotelRoom,
-        numberOfDays: Number(numberOfDays),
-        discount: Number(discount),
-        totalPrice: Number(totalPrice),
-        user,
-      });
+        // Use the destructured properties as needed
+        await createBooking({
+          adults: Number(adults),
+          checkinDate,
+          checkoutDate,
+          children: Number(children),
+          hotelRoom,
+          numberOfDays: Number(numberOfDays),
+          user,
+          discount: Number(discount),
+          totalPrice: Number(totalPrice),
+        });
 
-      //   Update hotel Room
-      await updateHotelRoom(hotelRoom);
+        await updateHotelRoom(hotelRoom);
 
-      return NextResponse.json('Booking successful', {
-        status: 200,
-        statusText: 'Booking Successful',
-      });
+        return NextResponse.json("Booking successful", {
+          status: 200,
+          statusText: "Booking Successful",
+        });
+      } else {
+        return new NextResponse("Metadata is missing", { status: 400 });
+      }
+    }
 
     default:
       console.log(`Unhandled event type ${event.type}`);
   }
 
-  return NextResponse.json('Event Received', {
+  return NextResponse.json("Event Received", {
     status: 200,
-    statusText: 'Event Received',
+    statusText: "Event Received",
   });
 }
